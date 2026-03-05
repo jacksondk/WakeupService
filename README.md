@@ -2,6 +2,8 @@
 
 A tiny HTTP service that runs on a Raspberry Pi and wakes your main computer via **Wake-on-LAN** (WoL). Accessible over [Tailscale](https://tailscale.com/) from your phone or any device. **ALL Security is assumed to be comming from e.g. Tailscale**
 
+About 99% of this was vibe-coded using Copilot with Claude Sonnet 4.6.
+
 ## Features
 
 - **Web UI** — one-button page, bookmarkable to your Android home screen
