@@ -1,0 +1,16 @@
+# WakeupService configuration
+
+# MAC address of the computer to wake up (colon or dash separated)
+mac_address: "AA:BB:CC:DD:EE:FF"
+
+# UDP broadcast address for the Wake-on-LAN magic packet
+# 255.255.255.255 works for most home networks; use your subnet broadcast
+# address (e.g. 192.168.1.255) if needed
+broadcast_address: "255.255.255.255"
+
+# UDP port for Wake-on-LAN (standard is 9, some setups use 7)
+wol_port: 9
+
+# Address and port the HTTP server listens on
+# Use :8080 to listen on all interfaces (including Tailscale) on port 8080
+listen_address: ":8080"

@@ -1,0 +1,15 @@
+[Unit]
+Description=WakeupService - Wake-on-LAN HTTP server
+# Start after the network is up (important after a power failure reboot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/wakeup
+ExecStart=/home/pi/wakeup/wakeup-service /home/pi/wakeup/config.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
