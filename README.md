@@ -1,6 +1,6 @@
 # WakeupService
 
-A tiny HTTP service that runs on a Raspberry Pi and wakes your main computer via **Wake-on-LAN** (WoL). Accessible over [Tailscale](https://tailscale.com/) from your phone or any device.
+A tiny HTTP service that runs on a Raspberry Pi and wakes your main computer via **Wake-on-LAN** (WoL). Accessible over [Tailscale](https://tailscale.com/) from your phone or any device. **ALL Security is assumed to be comming from e.g. Tailscale**
 
 ## Features
 
@@ -47,7 +47,9 @@ go build -o wakeup-service .
 | Pi 3 / 4 / 5 (64-bit) | `GOOS=linux GOARCH=arm64 go build -o wakeup-service .` |
 | Pi 2 / Zero / Zero W | `GOOS=linux GOARCH=arm GOARM=7 go build -o wakeup-service .` |
 
-Or use `make build-arm64` / `make build-armv7` if you have `make`.
+Or use `make build-arm64` / `make build-armv7` if you have `make`. If you cross-compile
+either rename the target executable or adjust scripts/commands in the following to 
+the proper name.
 
 ### 3. Copy to Pi and run
 
