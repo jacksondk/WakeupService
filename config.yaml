@@ -1,7 +1,11 @@
 # WakeupService configuration
 
-# MAC address of the computer to wake up (colon or dash separated)
-mac_address: "AA:BB:CC:DD:EE:FF"
+# Address and port the HTTP server listens on
+# Use :8080 to listen on all interfaces (including Tailscale) on port 8080
+listen_address: ":8080"
+
+# Optional top-level defaults. Any computer below that omits
+# broadcast_address / wol_port falls back to these values.
 
 # UDP broadcast address for the Wake-on-LAN magic packet
 # 255.255.255.255 works for most home networks; use your subnet broadcast
@@ -11,6 +15,14 @@ broadcast_address: "255.255.255.255"
 # UDP port for Wake-on-LAN (standard is 9, some setups use 7)
 wol_port: 9
 
-# Address and port the HTTP server listens on
-# Use :8080 to listen on all interfaces (including Tailscale) on port 8080
-listen_address: ":8080"
+# One entry per computer; each gets its own button in the web UI and its
+# own POST /wake/<slug-of-name> endpoint (e.g. "Desktop PC" -> /wake/desktop-pc).
+# broadcast_address / wol_port may be overridden per computer when a machine
+# lives on a different subnet or needs a non-default WoL port.
+computers:
+  - name: "Desktop PC"
+    mac_address: "AA:BB:CC:DD:EE:FF"
+
+  - name: "Media Server"
+    mac_address: "11:22:33:44:55:66"
+    broadcast_address: "192.168.1.255"

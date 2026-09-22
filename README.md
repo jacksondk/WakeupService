@@ -6,8 +6,8 @@ About 99% of this was vibe-coded using Copilot with Claude Sonnet 4.6.
 
 ## Features
 
-- **Web UI** — one-button page, bookmarkable to your Android home screen
-- **REST endpoint** — `POST /wake` for curl / Tasker / HTTP Shortcuts automation
+- **Web UI** — one button per computer, bookmarkable to your Android home screen
+- **REST endpoint** — `POST /wake/<id>` per computer for curl / Tasker / HTTP Shortcuts automation
 - Single self-contained binary, no runtime dependencies
 - Config file for easy setup
 
@@ -20,11 +20,24 @@ About 99% of this was vibe-coded using Copilot with Claude Sonnet 4.6.
 Edit `config.yaml`:
 
 ```yaml
-mac_address: "AA:BB:CC:DD:EE:FF"   # ← replace with your PC's MAC address
+listen_address: ":8080"
+
+# Optional defaults; any computer below that omits these falls back to them
 broadcast_address: "255.255.255.255"
 wol_port: 9
-listen_address: ":8080"
+
+computers:
+  - name: "Desktop PC"                # ← shows up as the button label
+    mac_address: "AA:BB:CC:DD:EE:FF"  # ← replace with your PC's MAC address
+
+  - name: "Media Server"
+    mac_address: "11:22:33:44:55:66"
+    broadcast_address: "192.168.1.255"  # per-computer override, e.g. different subnet
 ```
+
+Each computer gets its own button in the web UI and its own endpoint at
+`POST /wake/<id>`, where `<id>` is the computer's name lower-cased and
+hyphenated (`"Desktop PC"` → `desktop-pc`).
 
 **Finding your PC's MAC address:**
 - Windows: `getmac /v` or `ipconfig /all`
@@ -75,13 +88,13 @@ Optionally pass a custom config path:
 ### From Android (browser)
 
 1. Open `http://<pi-tailscale-ip>:8080` in your browser
-2. Tap the **Wake** button
+2. Tap the button for the computer you want to wake
 3. Bookmark the page → *Add to Home Screen* for a one-tap shortcut
 
 ### REST API
 
 ```bash
-curl -X POST http://<pi-tailscale-ip>:8080/wake
+curl -X POST http://<pi-tailscale-ip>:8080/wake/desktop-pc
 # → {"status":"ok"}
 ```
 
@@ -90,7 +103,7 @@ Use with [HTTP Shortcuts](https://http-shortcuts.rmy.ch/) (Android) for a home s
 ### From anywhere on your Tailscale network
 
 ```bash
-curl -X POST http://raspberrypi:8080/wake
+curl -X POST http://raspberrypi:8080/wake/desktop-pc
 ```
 
 ---
