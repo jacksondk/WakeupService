@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -9,8 +10,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	"wakeupservice/wol"
@@ -228,20 +233,26 @@ var uiTemplate = template.Must(template.New("ui").Parse(`<!DOCTYPE html>
 </html>
 `))
 
-func main() {
-	cfgPath := "config.yaml"
-	if len(os.Args) > 1 {
-		cfgPath = os.Args[1]
+// defaultConfigPath returns config.yaml next to the executable. Services
+// start with System32 as the working directory, so a relative path is unsafe.
+func defaultConfigPath() string {
+	if exe, err := os.Executable(); err == nil {
+		return filepath.Join(filepath.Dir(exe), "config.yaml")
 	}
+	return "config.yaml"
+}
 
+// run loads the config, serves HTTP until stop is closed (or the server
+// fails), then shuts down gracefully.
+func run(cfgPath string, stop <-chan struct{}) error {
 	cfg, err := loadConfig(cfgPath)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	computers, err := buildComputers(cfg)
 	if err != nil {
-		log.Fatalf("Invalid config: %v", err)
+		return fmt.Errorf("invalid config: %w", err)
 	}
 
 	computerByID := make(map[string]Computer, len(computers))
@@ -252,18 +263,19 @@ func main() {
 		log.Printf("Configured computer %q (id=%s, mac=%s, broadcast=%s)", c.Name, c.ID, c.MACAddress, c.BroadcastAddress)
 	}
 
-	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		uiTemplate.Execute(w, data)
 	})
 
-	http.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/x-icon")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		w.Write(faviconICO)
 	})
 
-	http.HandleFunc("POST /wake/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /wake/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		c, ok := computerByID[r.PathValue("id")]
 		if !ok {
@@ -281,8 +293,39 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
+	srv := &http.Server{Addr: cfg.ListenAddress, Handler: mux}
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe() }()
+
 	log.Printf("WakeupService listening on %s (%d computer(s) configured)", cfg.ListenAddress, len(computers))
-	if err := http.ListenAndServe(cfg.ListenAddress, nil); err != nil {
-		log.Fatalf("Server error: %v", err)
+	select {
+	case err := <-errCh:
+		return fmt.Errorf("server error: %w", err)
+	case <-stop:
+		log.Printf("Shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return srv.Shutdown(ctx)
+	}
+}
+
+func main() {
+	cfgPath := defaultConfigPath()
+	if len(os.Args) > 1 {
+		cfgPath = os.Args[1]
+	}
+
+	// When launched by the Windows SCM this runs the service and returns.
+	if handled, err := runAsService(cfgPath); handled {
+		if err != nil {
+			log.Fatalf("Service failed: %v", err)
+		}
+		return
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := run(cfgPath, ctx.Done()); err != nil {
+		log.Fatalf("%v", err)
 	}
 }

@@ -157,3 +157,23 @@ systemctl --user disable wakeup-service  # remove from autostart
 ## Security
 
 The service has no authentication. It is intentionally scoped to your **Tailscale network only** — do not expose port 8080 to the public internet.
+
+## Running as a Windows service
+
+Build with `make build-windows` (or `go build -o wakeupservice.exe .`) and put
+`wakeupservice.exe` and `config.yaml` in a folder such as `C:\WakeupService`.
+When started by the Windows Service Control Manager the exe detects it and runs
+as a service, logging to `wakeupservice.log` next to the exe. If no config path
+argument is given it uses `config.yaml` next to the exe.
+
+From an **elevated** PowerShell:
+
+```powershell
+sc.exe create WakeupService binPath= "C:\WakeupService\wakeupservice.exe" start= delayed-auto depend= Tcpip DisplayName= "Wakeup Service"
+sc.exe description WakeupService "Wake-on-LAN HTTP server"
+sc.exe failure WakeupService reset= 86400 actions= restart/5000
+New-NetFirewallRule -DisplayName WakeupService -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
+sc.exe start WakeupService
+```
+
+Remove with `sc.exe stop WakeupService` then `sc.exe delete WakeupService`.

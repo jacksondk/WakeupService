@@ -1,10 +1,14 @@
 BINARY := wakeup-service
 
-.PHONY: build build-arm64 build-armv7 clean
+.PHONY: build build-windows build-arm64 build-armv7 clean
 
 ## Build for the current platform
 build:
 	go build -o $(BINARY) .
+
+## Build the Windows service executable
+build-windows:
+	GOOS=windows GOARCH=amd64 go build -o wakeupservice.exe .
 
 ## Cross-compile for Raspberry Pi 3 / 4 / 5 (64-bit)
 build-arm64:
